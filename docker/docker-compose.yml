@@ -1,0 +1,72 @@
+version: "3.8"
+
+services:
+  # 1. FastAPI backend microservice
+  backend:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.backend
+    container_name: nexusai_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_NAME=NexusAI Orchestration Platform
+      - DEBUG=True
+      - SQLITE_DB_PATH=/app/data/nexusai.db
+      - CHROMADB_HOST=chromadb
+      - CHROMADB_PORT=8000
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434 # Use host GPU by default
+      - CACHE_THRESHOLD=0.88
+    volumes:
+      - backend_db:/app/data
+      - backend_uploads:/app/uploads
+      - backend_models:/app/models_cache
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - chromadb
+    restart: unless-stopped
+
+  # 2. Next.js 14 frontend console
+  frontend:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.frontend
+    container_name: nexusai_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # 3. ChromaDB Vector Database
+  chromadb:
+    image: chromadb/chroma:0.4.24
+    container_name: nexusai_chromadb
+    ports:
+      - "8001:8000" # Expose on 8001 on host to avoid port 8000 conflict
+    volumes:
+      - chroma_vectors:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+    restart: unless-stopped
+
+  # 4. Ollama Runtime Sidecar (Local environment container option)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: nexusai_ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  backend_db:
+  backend_uploads:
+  backend_models:
+  chroma_vectors:
+  ollama_models:

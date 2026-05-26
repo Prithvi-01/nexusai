@@ -1,0 +1,26 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install system dependencies needed for compiling python packages if any
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Pre-create directory for SentenceTransformer caching inside the container
+ENV SENTENCE_TRANSFORMERS_HOME=/app/models_cache
+RUN mkdir -p /app/models_cache
+
+# Copy requirements and install
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy backend app codebase
+COPY backend/app/ ./app/
+
+# Expose port
+EXPOSE 8000
+
+# Start FastAPI application
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
