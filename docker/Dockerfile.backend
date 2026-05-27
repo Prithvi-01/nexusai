@@ -2,17 +2,23 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-# Install system dependencies needed for compiling python packages if any
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Pre-create directory for SentenceTransformer caching inside the container
+# Pre-create directory for SentenceTransformer model caching
 ENV SENTENCE_TRANSFORMERS_HOME=/app/models_cache
 RUN mkdir -p /app/models_cache
 
-# Copy requirements and install
+# Install CPU-only PyTorch FIRST to prevent pip from resolving the 4GB+ CUDA build.
+# This EC2 instance has no GPU, so CUDA libraries are wasted space.
+RUN pip install --no-cache-dir \
+    torch==2.2.2 \
+    --index-url https://download.pytorch.org/whl/cpu
+
+# Copy requirements and install the rest (sentence-transformers will reuse the CPU torch above)
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
