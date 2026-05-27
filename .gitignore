@@ -39,6 +39,10 @@ yarn-error.log*
 .terraform.lock.hcl
 *.tfvars
 *.tfvars.json
+# Terraform binaries (too large for GitHub)
+terraform
+terraform.exe
+*.exe
 
 # Local Development / Secrets
 *.pem
